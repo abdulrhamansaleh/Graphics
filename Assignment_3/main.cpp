@@ -14,8 +14,8 @@ struct Node {
 };
 
 std::vector<Node> nodes;
-bool draggingNode = false;
-int draggedNodeIndex = -1;
+bool draggingNode = false, draggingHandle = false;
+int draggedNodeIndex = -1, draggedHandleIndex = -1;
 
 void drawBezierCurve(Node& p0, Node& p1) {
     glColor3f(0, 0, 0); // Black lines
@@ -65,6 +65,10 @@ void drawScene() {
             glVertex2f(node.pos.x, node.pos.y);
             glVertex2f(node.handle2.x, node.handle2.y);
         }
+        if (node.hasHandle1 && node.hasHandle2) { // Ensure line passes through node
+            glVertex2f(node.handle1.x, node.handle1.y);
+            glVertex2f(node.handle2.x, node.handle2.y);
+        }
     }
     glEnd();
     glDisable(GL_LINE_STIPPLE);
@@ -91,6 +95,8 @@ void mouseButtonCallback(GLFWwindow* window, int button, int action, int mods) {
         if (!nodes.empty()) {
             newNode.hasHandle1 = true;
             newNode.handle1 = { (float)mx, (float)my + 50 };
+            newNode.hasHandle2 = true;
+            newNode.handle2 = { (float)mx, (float)my - 50 }; // Mirror handle
         }
         nodes.push_back(newNode);
     }
@@ -105,6 +111,12 @@ void cursorPosCallback(GLFWwindow* window, double mx, double my) {
     if (draggingNode && draggedNodeIndex >= 0 && draggedNodeIndex < (int)nodes.size()) {
         nodes[draggedNodeIndex].pos.x = (float)mx;
         nodes[draggedNodeIndex].pos.y = (float)my;
+        if (nodes[draggedNodeIndex].hasHandle1 && nodes[draggedNodeIndex].hasHandle2) {
+            float dx = nodes[draggedNodeIndex].handle1.x - nodes[draggedNodeIndex].pos.x;
+            float dy = nodes[draggedNodeIndex].handle1.y - nodes[draggedNodeIndex].pos.y;
+            nodes[draggedNodeIndex].handle2.x = nodes[draggedNodeIndex].pos.x - dx;
+            nodes[draggedNodeIndex].handle2.y = nodes[draggedNodeIndex].pos.y - dy;
+        }
     }
 }
 
@@ -118,7 +130,7 @@ void keyCallback(GLFWwindow* window, int key, int scancode, int action, int mods
 
 int main() {
     if (!glfwInit()) return -1;
-    GLFWwindow* window = glfwCreateWindow(800, 600, "Bezier Spline Editor", NULL, NULL);
+    GLFWwindow* window = glfwCreateWindow(800, 600, "Assignment 3", NULL, NULL);
     if (!window) { glfwTerminate(); return -1; }
     
     glfwMakeContextCurrent(window);
