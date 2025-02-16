@@ -51,7 +51,7 @@ void drawScene() {
     for (auto& node : nodes) {
         glVertex2f(node.pos.x, node.pos.y);
     }
-    glColor3f(1, 1, 1);
+    glColor3f(1, 0, 0); // Red handles
     for (auto& node : nodes) {
         if (node.hasHandle1) {
             glVertex2f(node.handle1.x, node.handle1.y);
@@ -135,15 +135,53 @@ void mouseButtonCallback(GLFWwindow* window, int button, int action, int mods) {
 void cursorPosCallback(GLFWwindow* window, double mx, double my) {
     my = 600 - my;
     if (draggingNode && draggedNodeIndex >= 0) {
+        Node& node = nodes[draggedNodeIndex];
+        float dx = (float)mx - node.pos.x;
+        float dy = (float)my - node.pos.y;
+        
+        // Update node position
+        node.pos.x = (float)mx;
+        node.pos.y = (float)my;
+        
+        // Move handles while maintaining their relative offsets
+        if (node.hasHandle1) {
+            node.handle1.x += dx;
+            node.handle1.y += dy;
+        }
+        if (node.hasHandle2) {
+            node.handle2.x += dx;
+            node.handle2.y += dy;
+        }
         nodes[draggedNodeIndex].pos.x = (float)mx;
         nodes[draggedNodeIndex].pos.y = (float)my;
     }
     if (draggingHandle && draggedNodeIndex >= 0) {
+        Node& node = nodes[draggedNodeIndex];
         if (draggingHandle1) {
+            float dx = (float)mx - node.pos.x;
+            float dy = (float)my - node.pos.y;
+            float dist = hypot(dx, dy);
+            float angle = atan2(dy, dx);
+            node.handle1.x = node.pos.x + dist * cos(angle);
+            node.handle1.y = node.pos.y + dist * sin(angle);
+            if (node.hasHandle2) { // Mirror handle for collinearity
+                node.handle2.x = node.pos.x - dist * cos(angle);
+                node.handle2.y = node.pos.y - dist * sin(angle);
+            }
             nodes[draggedNodeIndex].handle1.x = (float)mx;
             nodes[draggedNodeIndex].handle1.y = (float)my;
         }
         if (draggingHandle2) {
+            float dx = (float)mx - node.pos.x;
+            float dy = (float)my - node.pos.y;
+            float dist = hypot(dx, dy);
+            float angle = atan2(dy, dx);
+            node.handle2.x = node.pos.x + dist * cos(angle);
+            node.handle2.y = node.pos.y + dist * sin(angle);
+            if (node.hasHandle1) { // Mirror handle for collinearity
+                node.handle1.x = node.pos.x - dist * cos(angle);
+                node.handle1.y = node.pos.y - dist * sin(angle);
+            }
             nodes[draggedNodeIndex].handle2.x = (float)mx;
             nodes[draggedNodeIndex].handle2.y = (float)my;
         }
