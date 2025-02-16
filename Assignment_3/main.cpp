@@ -16,6 +16,7 @@ struct Node {
 std::vector<Node> nodes;
 bool draggingNode = false, draggingHandle = false;
 int draggedNodeIndex = -1, draggedHandleIndex = -1;
+bool draggingHandle1 = false, draggingHandle2 = false;
 
 void drawBezierCurve(Node& p0, Node& p1) {
     glColor3f(0, 0, 0); // Black lines
@@ -50,6 +51,15 @@ void drawScene() {
     for (auto& node : nodes) {
         glVertex2f(node.pos.x, node.pos.y);
     }
+    glColor3f(1, 1, 1);
+    for (auto& node : nodes) {
+        if (node.hasHandle1) {
+            glVertex2f(node.handle1.x, node.handle1.y);
+        }
+        if (node.hasHandle2) {
+            glVertex2f(node.handle2.x, node.handle2.y);
+        }
+    }
     glEnd();
     
     glColor3f(0, 0, 0); // Black dotted lines for handles
@@ -65,10 +75,6 @@ void drawScene() {
             glVertex2f(node.pos.x, node.pos.y);
             glVertex2f(node.handle2.x, node.handle2.y);
         }
-        if (node.hasHandle1 && node.hasHandle2) { // Ensure line passes through node
-            glVertex2f(node.handle1.x, node.handle1.y);
-            glVertex2f(node.handle2.x, node.handle2.y);
-        }
     }
     glEnd();
     glDisable(GL_LINE_STIPPLE);
@@ -77,54 +83,70 @@ void drawScene() {
 }
 
 void mouseButtonCallback(GLFWwindow* window, int button, int action, int mods) {
+    bool clickedOnExisting = false;
     double mx, my;
     glfwGetCursorPos(window, &mx, &my);
     my = 600 - my; 
     
     if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS) {
+        bool clickedOnExisting = false;
         for (size_t i = 0; i < nodes.size(); ++i) {
             if (hypot(nodes[i].pos.x - mx, nodes[i].pos.y - my) < 10) {
                 draggingNode = true;
                 draggedNodeIndex = i;
+                clickedOnExisting = true;
+                return;
+            }
+            if (hypot(nodes[i].handle1.x - mx, nodes[i].handle1.y - my) < 10) {
+                draggingHandle = true;
+                draggingHandle1 = true;
+                draggedNodeIndex = i;
+                clickedOnExisting = true;
+                return;
+            }
+            if (hypot(nodes[i].handle2.x - mx, nodes[i].handle2.y - my) < 10) {
+                draggingHandle = true;
+                draggingHandle2 = true;
+                draggedNodeIndex = i;
+                clickedOnExisting = true;
                 return;
             }
         }
-        
+    }
+    if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS && !clickedOnExisting) {
         Node newNode;
         newNode.pos = { (float)mx, (float)my };
-        if (!nodes.empty()) {
-            newNode.hasHandle1 = true;
-            newNode.handle1 = { (float)mx, (float)my + 50 };
-            newNode.hasHandle2 = true;
-            newNode.handle2 = { (float)mx, (float)my - 50 }; // Mirror handle
-        }
+        newNode.hasHandle1 = true;
+        newNode.handle1 = { (float)mx + 50, (float)my };
+        newNode.hasHandle2 = true;
+        newNode.handle2 = { (float)mx - 50, (float)my };
         nodes.push_back(newNode);
     }
+    
     if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_RELEASE) {
         draggingNode = false;
+        draggingHandle = false;
+        draggingHandle1 = false;
+        draggingHandle2 = false;
         draggedNodeIndex = -1;
     }
 }
 
 void cursorPosCallback(GLFWwindow* window, double mx, double my) {
     my = 600 - my;
-    if (draggingNode && draggedNodeIndex >= 0 && draggedNodeIndex < (int)nodes.size()) {
+    if (draggingNode && draggedNodeIndex >= 0) {
         nodes[draggedNodeIndex].pos.x = (float)mx;
         nodes[draggedNodeIndex].pos.y = (float)my;
-        if (nodes[draggedNodeIndex].hasHandle1 && nodes[draggedNodeIndex].hasHandle2) {
-            float dx = nodes[draggedNodeIndex].handle1.x - nodes[draggedNodeIndex].pos.x;
-            float dy = nodes[draggedNodeIndex].handle1.y - nodes[draggedNodeIndex].pos.y;
-            nodes[draggedNodeIndex].handle2.x = nodes[draggedNodeIndex].pos.x - dx;
-            nodes[draggedNodeIndex].handle2.y = nodes[draggedNodeIndex].pos.y - dy;
-        }
     }
-}
-
-void keyCallback(GLFWwindow* window, int key, int scancode, int action, int mods) {
-    if (key == GLFW_KEY_E && action == GLFW_PRESS) {
-        nodes.clear();
-        draggingNode = false;
-        draggedNodeIndex = -1;
+    if (draggingHandle && draggedNodeIndex >= 0) {
+        if (draggingHandle1) {
+            nodes[draggedNodeIndex].handle1.x = (float)mx;
+            nodes[draggedNodeIndex].handle1.y = (float)my;
+        }
+        if (draggingHandle2) {
+            nodes[draggedNodeIndex].handle2.x = (float)mx;
+            nodes[draggedNodeIndex].handle2.y = (float)my;
+        }
     }
 }
 
@@ -138,7 +160,6 @@ int main() {
     
     glfwSetMouseButtonCallback(window, mouseButtonCallback);
     glfwSetCursorPosCallback(window, cursorPosCallback);
-    glfwSetKeyCallback(window, keyCallback);
     
     while (!glfwWindowShouldClose(window)) {
         drawScene();
